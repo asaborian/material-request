@@ -2,6 +2,6 @@
 
 ## 認証・DB設計に関する質問
 
-### Q: カラム名を `clerk_user_id` ではなく、抽象的な `auth_provider_id` と `auth_provider_name` の2カラム構成にしなかった理由は？
+### Q: usersテーブルのカラム名を `clerk_user_id` ではなく、抽象的な `auth_provider_id` と `auth_provider_name` の2カラム構成にしなかった理由は？
 A: オーバーエンジニアリングだと判断しました。将来的にclerk以外の認証サービスへの乗り換える可能性よりも、開発のしやすさを優先してシンプルにしました。
 

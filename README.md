@@ -1,36 +1,28 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 診療材料新規採用申請システム
 
-## Getting Started
+医師・看護師・コメディカル等が、病院に対して新たに導入したい診療材料の採用を申請するワークフローシステム。
 
-First, run the development server:
+## システム概要
+本システムは、単なる申請手続きのデジタル化に留まらず、院内委員会における「プレゼンテーション免除基準」を申請画面に組み込んでいる点が最大の特徴です。既存材料との価格比較を厳格に行い、以下のようなインセンティブを働かせます。
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+* **メーカーへの価格交渉:** 「既存品との価格比較」を免除基準に設定。メーカーが安値を提示しなければ医師にプレゼン負担がかかる構造にすることで、自発的な最安値を引き出します。
+* **院内採用品目数の抑制:** 安易な新規採用を防止し、類似品への集約を誘導。
+* **委員会運用の効率化:** 基準を満たした良質な申請のプレゼンを免除し、審議時間を短縮。
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 主要機能（予定含む）
+* **認証・認可:** Clerkを利用したアカウント制御
+* **申請ワークフロー:** プレゼン免除基準（既存品との価格比較等）の判定ロジックを組み込んだ申請フォーム
+* **データベース（Neon）:** 申請データ、ユーザープロフィール、診療材料マスタの管理
+* **業者による代理入力（仕様検討中）:** 医師が多忙で申請手続きを行う余裕がない実務背景を考慮し、業者がアカウント登録を行って申請を代理入力できる権限・機能。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 設計の意思決定（FAQ）
+本プロジェクトの開発における技術選定やDB設計のトレードオフ、仕様の根拠については、以下のドキュメントにまとめています。
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+* [面接時想定質問集（仕様・設計の意思決定）](./interview-faq.md)
 
-## Learn More
+## 技術スタック
+* **Frontend / Backend:** Next.js
+* **Authentication:** Clerk
+* **Database:** Neon (PostgreSQL)
+* **E2E Testing:** Playwright
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

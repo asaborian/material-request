@@ -15,14 +15,21 @@
 * **データベース（Neon）:** 申請データ、ユーザープロフィール、診療材料マスタの管理
 * **業者による代理入力（仕様検討中）:** 医師が多忙で申請手続きを行う余裕がない実務背景を考慮し、業者がアカウント登録を行って申請を代理入力できる権限・機能。
 
-## 設計の意思決定（FAQ）
-本プロジェクトの開発における技術選定やDB設計のトレードオフ、仕様の根拠については、以下のドキュメントにまとめています。
-
-* [面接時想定質問集（仕様・設計の意思決定）](./interview-faq.md)
-
 ## 技術スタック
 * **Frontend / Backend:** Next.js
 * **Authentication:** Clerk
-* **Database:** Neon (PostgreSQL)
+* **Database:** Neon (PostgreSQL) / Drizzle ORM
 * **E2E Testing:** Playwright
 
+## 📚 ドキュメント (Docs)
+
+本プロダクトの技術選定理由や設計思想、テスト方針、トラブルシューティングログについては以下の各ドキュメントを参照してください。
+
+* 🏗️ **[技術選定理由 (architecture.md)](./docs/architecture.md)**
+  * Next.js, Neon, Drizzle, Playwright 等を採用した背景とトレードオフ
+* 📐 **[システム・DB設計 (system-design.md)](./docs/system-design.md)**
+  * システム構成、DBスキーマ設計、クラス・モジュール分割の判断理由
+* 🧪 **[テスト設計思想 (test-design.md)](./docs/test-design.md)**
+  * JSTQBに基づくテスト観点、PlaywrightによるE2E自動化、CI/CD運用
+* 🛠️ **[トラブルシューティング・開発ログ (troubleshooting.md)](./docs/troubleshooting.md)**
+  * 開発・環境構築過程で発生した技術的課題と解決プロセスの記録

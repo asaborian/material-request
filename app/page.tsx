@@ -2,6 +2,9 @@ import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { getDbUserByClerkId } from '@/db/users';
 
+// キャッシュの使い回しを禁止し、アクセスごとに毎回最新のDB状態・認証状態を評価させる設定
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   // ClerkからClerk側のユーザーIDを取得（clerkUserIdとして明示）
   const { userId: clerkUserId } = await auth();

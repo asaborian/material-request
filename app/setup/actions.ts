@@ -2,6 +2,7 @@
 
 import { auth } from '@clerk/nextjs/server';
 import { createDbUser, getDbUserByClerkId } from '@/db/users';
+import { revalidatePath } from 'next/cache';
 
 export type SetupFormInput = {
   name: string;
@@ -32,6 +33,9 @@ export async function createUserAction(formData: SetupFormInput) {
     department: formData.department,
     role: 'applicant',
   });
+
+  // トップページ（/）のキャッシュを破棄し、次回アクセス時に必ず最新のDB状態で交通整理させる
+  revalidatePath('/');
 
   return newUser;
 }

@@ -31,8 +31,8 @@ export default function SetupPage() {
     startTransition(async () => {
       try {
         await createUserAction({ name, department });
-        // 登録成功後、申請一覧画面へ遷移
-        router.push('/requests');
+        // 登録成功後、ルートへ移動し、roleに応じた画面（一般なら /requests、管理者なら /admin/requests）へ交通整理させる
+        router.push('/');
         router.refresh();
       } catch (error) {
         if (error instanceof Error) {

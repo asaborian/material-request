@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "ai-context": "./scripts/ai-context.sh"
+    "ai-context": "./scripts/ai-context.sh",
+    "test": "vitest"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.5.17",
@@ -20,14 +21,20 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^26.6.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.1.1",
     "drizzle-kit": "^1.0.0-rc.4",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "jsdom": "^30.1.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^5.0.1"
   }
 }

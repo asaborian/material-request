@@ -19,6 +19,8 @@ find . -maxdepth 4 \
   -name ".git" -prune -o \
   -name "public" -prune -o \
   -name "drizzle" -prune -o \
+  -name "playwright-report" -prune -o \
+  -name "test-results" -prune -o \
   -not -path '*/.*' -print | sort
 echo -e "\`\`\`\n"
 
@@ -36,8 +38,11 @@ find . \
   -name "public" -prune -o \
   -name "drizzle" -prune -o \
   -name "scripts" -prune -o \
+  -name "playwright-report" -prune -o \
+  -name "test-results" -prune -o \
   -type f -not -path '*/.*' \
   -not -name '*.png' -not -name '*.ico' -not -name '*.jpeg' -not -name '*.jpg' \
+  -not -name '*.html' \
   -not -name '*.lock' -not -name 'package-lock.json' \
   -not -name 'tsconfig.tsbuildinfo' \
   -not -name 'next-env.d.ts' \
@@ -45,3 +50,4 @@ find . \
   -not -name 'eslint.config.mjs' \
   -not -name 'AGENTS.md' \
   -exec tail -n +1 {} + 2>/dev/null | sed 's/==> \(.*\) <==/### 📄 \1/'
+

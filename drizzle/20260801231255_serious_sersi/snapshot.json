@@ -2,9 +2,7 @@
   "version": "8",
   "dialect": "postgres",
   "id": "0cca3698-ece6-479d-8501-03bcdf3464fa",
-  "prevIds": [
-    "c7c31376-9bdc-4a34-9963-aa6f8671af4d"
-  ],
+  "prevIds": ["c7c31376-9bdc-4a34-9963-aa6f8671af4d"],
   "ddl": [
     {
       "isRlsEnabled": false,
@@ -475,14 +473,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "user_id"
-      ],
+      "columns": ["user_id"],
       "schemaTo": "public",
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "requests_user_id_users_id_fkey",
@@ -491,9 +485,7 @@
       "table": "requests"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "requests_pkey",
       "schema": "public",
@@ -501,9 +493,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "users_pkey",
       "schema": "public",
@@ -512,9 +502,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "clerk_user_id"
-      ],
+      "columns": ["clerk_user_id"],
       "nullsNotDistinct": false,
       "name": "users_clerk_user_id_key",
       "schema": "public",

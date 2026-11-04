@@ -8,7 +8,9 @@ describe('RequestsPage（申請者用ページ）', () => {
     render(<RequestsPage />);
 
     // 2. 画面内に「申請一覧（申請者用）」の見出し（h1）が存在するか探す
-    const heading = screen.getByRole('heading', { name: '申請一覧（申請者用）' });
+    const heading = screen.getByRole('heading', {
+      name: '申請一覧（申請者用）',
+    });
 
     // 3. 見出しが正常に存在する（undefinedではない）ことを検証する
     expect(heading).toBeDefined();

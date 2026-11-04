@@ -2,9 +2,7 @@
   "version": "8",
   "dialect": "postgres",
   "id": "c7c31376-9bdc-4a34-9963-aa6f8671af4d",
-  "prevIds": [
-    "00000000-0000-0000-0000-000000000000"
-  ],
+  "prevIds": ["00000000-0000-0000-0000-000000000000"],
   "ddl": [
     {
       "isRlsEnabled": false,
@@ -104,9 +102,7 @@
       "table": "users"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "users_pkey",
       "schema": "public",
@@ -115,9 +111,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "clerk_user_id"
-      ],
+      "columns": ["clerk_user_id"],
       "nullsNotDistinct": false,
       "name": "users_clerk_user_id_key",
       "schema": "public",

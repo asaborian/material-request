@@ -21,7 +21,7 @@ export default function SetupPage() {
     // トリム済みの値をローカル変数に確定させる
     const name = formData.name.trim();
     const department = formData.department.trim();
-    
+
     // バリデーション：空文字・スペースのみの入力を弾く
     if (!name || !department) {
       setErrorMessage('氏名と所属は必須項目です。');

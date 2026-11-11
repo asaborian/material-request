@@ -1,18 +1,21 @@
 import {
   boolean,
   integer,
+  pgEnum,
   pgTable,
   text,
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
 
+export const userRoleEnum = pgEnum('user_role', ['applicant', 'admin']);
+
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   clerkUserId: text('clerk_user_id').notNull().unique(),
   name: text('name').notNull(),
   department: text('department').notNull(),
-  role: text('role').notNull(), // 'applicant' | 'admin'（アプリ側で明示指定）
+  role: userRoleEnum('role').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()

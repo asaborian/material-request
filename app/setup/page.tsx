@@ -2,35 +2,27 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
 import { createUserAction } from './actions';
 
 export default function SetupPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<{ name: string; department: string }>();
+
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState({
-    name: '',
-    department: '',
-  });
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const onSubmit = (data: { name: string; department: string }) => {
     setErrorMessage(null);
-
-    // トリム済みの値をローカル変数に確定させる
-    const name = formData.name.trim();
-    const department = formData.department.trim();
-
-    // バリデーション：空文字・スペースのみの入力を弾く
-    if (!name || !department) {
-      setErrorMessage('氏名と所属は必須項目です。');
-      return;
-    }
 
     startTransition(async () => {
       try {
-        await createUserAction({ name, department });
+        await createUserAction(data);
         // 登録成功後、ルートへ移動し、roleに応じた画面（一般なら /requests、管理者なら /admin/requests）へ交通整理させる
         router.push('/');
         router.refresh();
@@ -56,7 +48,7 @@ export default function SetupPage() {
           </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
           {errorMessage && (
             <div className="rounded-md bg-red-50 p-4 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-400">
               {errorMessage}
@@ -73,17 +65,17 @@ export default function SetupPage() {
               </label>
               <input
                 id="name"
-                name="name"
                 type="text"
-                required
                 disabled={isPending}
                 placeholder="例：山田 太郎"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
+                {...register('name', { required: '氏名は必須項目です。' })}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
               />
+              {errors.name && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errors.name.message}
+                </p>
+              )}
             </div>
 
             <div>
@@ -95,17 +87,19 @@ export default function SetupPage() {
               </label>
               <input
                 id="department"
-                name="department"
                 type="text"
-                required
                 disabled={isPending}
                 placeholder="例：循環器内科、看護部"
-                value={formData.department}
-                onChange={(e) =>
-                  setFormData({ ...formData, department: e.target.value })
-                }
+                {...register('department', {
+                  required: '所属は必須項目です。',
+                })}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
               />
+              {errors.department && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errors.department.message}
+                </p>
+              )}
             </div>
           </div>
 

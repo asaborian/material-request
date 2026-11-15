@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
-import { db } from './index';
-import { users } from './schema';
+import { db } from '../index';
+import { users } from '../schema';
 
 /**
  * 1. ClerkユーザーIDから自前DB(users)のレコードを検索・確認する関数

@@ -1,7 +1,7 @@
 'use server';
 
 import { auth } from '@clerk/nextjs/server';
-import { createDbUser, getDbUserByClerkId } from '@/db/users';
+import { createDbUser, getDbUserByClerkId } from '@/db/queries/users';
 import { revalidatePath } from 'next/cache';
 import { setupFormSchema } from '@/lib/validations/user';
 import type { SetupFormInput } from '@/lib/validations/user';

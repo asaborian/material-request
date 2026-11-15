@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
-import { getDbUserByClerkId } from '@/db/users';
+import { getDbUserByClerkId } from '@/db/queries/users';
 
 // キャッシュの使い回しを禁止し、アクセスごとに毎回最新のDB状態・認証状態を評価させる設定
 export const dynamic = 'force-dynamic';

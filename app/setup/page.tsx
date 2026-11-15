@@ -1,9 +1,13 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { createUserAction } from './actions';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { setupFormSchema } from '@/lib/validations/user';
+import type { SetupFormInput } from '@/lib/validations/user';
+import { handleActionError } from '@/lib/utils';
 
 export default function SetupPage() {
   const router = useRouter();
@@ -12,27 +16,24 @@ export default function SetupPage() {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors },
-  } = useForm<{ name: string; department: string }>();
+  } = useForm<SetupFormInput>({
+    resolver: zodResolver(setupFormSchema),
+  });
 
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const onSubmit = (data: { name: string; department: string }) => {
-    setErrorMessage(null);
-
+  const onSubmit = (data: SetupFormInput) => {
     startTransition(async () => {
-      try {
-        await createUserAction(data);
-        // 登録成功後、ルートへ移動し、roleに応じた画面（一般なら /requests、管理者なら /admin/requests）へ交通整理させる
-        router.push('/');
-        router.refresh();
-      } catch (error) {
-        if (error instanceof Error) {
-          setErrorMessage(error.message);
-        } else {
-          setErrorMessage('予期せぬエラーが発生しました。');
-        }
+      const result = await createUserAction(data);
+
+      if (!result.success) {
+        handleActionError(setError, result);
+        return;
       }
+
+      // 登録成功後、ルートへ移動し、roleに応じた画面（一般なら /requests、管理者なら /admin/requests）へ交通整理させる
+      router.push('/');
+      router.refresh();
     });
   };
 
@@ -49,9 +50,9 @@ export default function SetupPage() {
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
-          {errorMessage && (
+          {errors.root && (
             <div className="rounded-md bg-red-50 p-4 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-400">
-              {errorMessage}
+              {errors.root.message}
             </div>
           )}
 
@@ -68,7 +69,7 @@ export default function SetupPage() {
                 type="text"
                 disabled={isPending}
                 placeholder="例：山田 太郎"
-                {...register('name', { required: '氏名は必須項目です。' })}
+                {...register('name')}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
               />
               {errors.name && (
@@ -90,9 +91,7 @@ export default function SetupPage() {
                 type="text"
                 disabled={isPending}
                 placeholder="例：循環器内科、看護部"
-                {...register('department', {
-                  required: '所属は必須項目です。',
-                })}
+                {...register('department')}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
               />
               {errors.department && (

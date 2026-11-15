@@ -7,6 +7,7 @@ import { createUserAction } from './actions';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { setupFormSchema } from '@/lib/validations/user';
 import type { SetupFormInput } from '@/lib/validations/user';
+import { handleActionError } from '@/lib/utils';
 
 export default function SetupPage() {
   const router = useRouter();
@@ -26,15 +27,7 @@ export default function SetupPage() {
       const result = await createUserAction(data);
 
       if (!result.success) {
-        if (result.fieldErrors?.name) {
-          setError('name', { message: result.fieldErrors.name[0] });
-        }
-        if (result.fieldErrors?.department) {
-          setError('department', { message: result.fieldErrors.department[0] });
-        }
-        if (!result.fieldErrors) {
-          setError('root', { message: result.error });
-        }
+        handleActionError(setError, result);
         return;
       }
 

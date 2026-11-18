@@ -19,7 +19,6 @@ concurrency:
 
 jobs:
   lint:
-    name: Lint & Format Check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository

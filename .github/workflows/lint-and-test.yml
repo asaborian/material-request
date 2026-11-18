@@ -40,8 +40,7 @@ jobs:
       - name: Run Prettier Check
         run: npx prettier . --check
 
-  unit-test:
-    name: Unit Test
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository

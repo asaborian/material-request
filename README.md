@@ -27,38 +27,35 @@ PR作成・pushをトリガーに、GitHub Actionsによる高速な静的検証
 
 ```mermaid
 flowchart TD
-    classDef test fill:#e8f0fe,stroke:#4285f4,stroke-width:1.5px;
+    classDef check fill:#e8f0fe,stroke:#4285f4,stroke-width:1.5px;
     classDef db fill:#fef7e0,stroke:#f9ab00,stroke-width:1.5px;
     classDef gate fill:#f3e8fd,stroke:#9334ea,stroke-width:1.5px;
     classDef ok fill:#e6f4ea,stroke:#34a853,stroke-width:2px;
     classDef ng fill:#fce8e6,stroke:#ea4335,stroke-width:1.5px;
 
-    PR["PR Created / Pushed"]:::test
+    PR["PR Created / Pushed"]:::check
 
-    %% 並列で走る2大パイプライン
-    subgraph CI [" ① GitHub Actions: Core CI (Parallel) "]
+    subgraph CI [" ① GitHub Actions: Core CI "]
         direction TB
-        TC["typecheck: TypeScript"]:::test
-        LINT["lint: ESLint"]:::test
-        FMT["format: Prettier"]:::test
-        UNIT["test: Vitest"]:::test
+        TC["[Check 1] typecheck: TypeScript"]:::check
+        LINT["[Check 2] lint: ESLint"]:::check
+        FMT["[Check 3] format: Prettier"]:::check
+        UNIT["[Check 4] test: Vitest"]:::check
     end
 
     subgraph PREVIEW [" ② Vercel & Neon: Preview Verification "]
         direction TB
         NEON["Neon: Create Test DB Branch"]:::db
         VERCEL["Vercel: Deploy Preview & Migrate DB"]:::db
-        E2E["Playwright: Run E2E Tests"]:::test
+        E2E["[Check 5] Playwright E2E Test"]:::check
         NEON --> VERCEL --> E2E
     end
 
     PR --> CI
     PR --> PREVIEW
 
-    %% 合流してゲート判定
-    GATE{"Branch Protection Rules<br>(5 Required Checks)"}:::gate
-    CI --> GATE
-    E2E --> GATE
+    %% 5つの必須チェックが直接合流
+    TC & LINT & FMT & UNIT & E2E --> GATE{"Branch Protection Rules<br>(5 Required Checks)"}:::gate
 
     GATE -->|All Passed| PASS["Merge to main"]:::ok
     GATE -->|Any Failed| FAIL["Blocked"]:::ng
@@ -75,9 +72,8 @@ flowchart LR
     classDef skip fill:#f1f3f4,stroke:#9aa0a6,stroke-width:1.5px,stroke-dasharray: 4 4;
 
     MERGE["Merge to main"]:::main --> VERCEL["Vercel: Production Deploy & DB Migration"]
-    MERGE --> SKIP["E2E Tests: Skipped (Production Safety)"]:::skip
-
-    VERCEL --> RELEASE["Production Released"]:::success
+    VERCEL --> SKIP["GitHub Actions: E2E Skipped (Production Safety)"]:::skip
+    SKIP --> RELEASE["Production Released"]:::success
 ```
 
 ## 4. 技術的挑戦と問題解決

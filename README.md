@@ -27,40 +27,40 @@ PR作成・pushをトリガーに、GitHub Actionsによる高速な静的検証
 
 ```mermaid
 flowchart TD
-    %% 横長・薄型のブロックサイズを指定
-    classDef test fill:#e8f0fe,stroke:#4285f4,stroke-width:1.5px,min-width:280px;
-    classDef db fill:#fef7e0,stroke:#f9ab00,stroke-width:1.5px,min-width:340px;
-    classDef gate fill:#f3e8fd,stroke:#9334ea,stroke-width:1.5px,min-width:260px;
-    classDef ok fill:#e6f4ea,stroke:#34a853,stroke-width:2px;
-    classDef ng fill:#fce8e6,stroke:#ea4335,stroke-width:1.5px;
+    %% 有効な padding でノードの内側に安全な余白を確保する
+    classDef test fill:#e8f0fe,stroke:#4285f4,stroke-width:1.5px,padding:8px 16px;
+    classDef db fill:#fef7e0,stroke:#f9ab00,stroke-width:1.5px,padding:8px 16px;
+    classDef gate fill:#f3e8fd,stroke:#9334ea,stroke-width:1.5px,padding:8px 16px;
+    classDef ok fill:#e6f4ea,stroke:#34a853,stroke-width:2px,padding:10px 20px;
+    classDef ng fill:#fce8e6,stroke:#ea4335,stroke-width:1.5px,padding:8px 16px;
 
-    PR(["PR作成 / push"]):::test
+    PR["PR作成 / push&nbsp;&nbsp;"]:::test
 
     subgraph CI [" ① GitHub Actions: コアCI (並列実行) "]
         direction TB
-        TC["`typecheck: TypeScript型検査`"]:::test
-        LINT["`lint: ESLint構文規則検査`"]:::test
-        FMT["`format: Prettierコード整形検査`"]:::test
-        UNIT["`test: Vitest単体・統合テスト`"]:::test
+        TC["typecheck: TypeScript型検査&nbsp;&nbsp;"]:::test
+        LINT["lint: ESLint構文規則検査&nbsp;&nbsp;"]:::test
+        FMT["format: Prettierコード整形検査&nbsp;&nbsp;"]:::test
+        UNIT["test: Vitest単体・統合テスト&nbsp;&nbsp;"]:::test
     end
 
     subgraph PREVIEW [" ② Vercel & Neon (環境検証) "]
         direction TB
-        NEON["`Neon: テスト用DBブランチ作成`"]:::db
-        VERCEL["`Vercel: プレビュー環境デプロイ (自動マイグレーション)`"]:::db
-        E2E["`Playwright: プレビュー環境E2Eテスト実行`"]:::test
+        NEON["Neon: テスト用DBブランチ作成&nbsp;&nbsp;"]:::db
+        VERCEL["Vercel: プレビュー環境デプロイ (自動マイグレーション)&nbsp;&nbsp;"]:::db
+        E2E["Playwright: プレビュー環境E2Eテスト実行&nbsp;&nbsp;"]:::test
         NEON --> VERCEL --> E2E
     end
 
     PR --> CI
     PR --> PREVIEW
 
-    GATE{"GitHub ブランチ保護 (5つの必須チェック判定)"}:::gate
+    GATE{"GitHub ブランチ保護<br>(5つの必須チェック判定)"}:::gate
     CI --> GATE
     E2E --> GATE
 
-    GATE -->|全チェック成功| PASS(["マージ承認 & 完了"]):::ok
-    GATE -->|いずれか失敗| FAIL["マージ自動ブロック"]:::ng
+    GATE -->|全チェック成功| PASS["マージ承認 & 完了&nbsp;&nbsp;&nbsp;&nbsp;"]:::ok
+    GATE -->|いずれか失敗| FAIL["マージ自動ブロック&nbsp;&nbsp;"]:::ng
 ```
 
 ### ② マージ後・本番デプロイフロー

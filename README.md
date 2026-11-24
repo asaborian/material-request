@@ -37,25 +37,27 @@ flowchart TD
 
     subgraph CI [" ① GitHub Actions: Core CI "]
         direction TB
-        TC["[Check 1] typecheck: TypeScript"]:::check
-        LINT["[Check 2] lint: ESLint"]:::check
-        FMT["[Check 3] format: Prettier"]:::check
-        UNIT["[Check 4] test: Vitest"]:::check
+        TC["[1] typecheck: TypeScript"]:::check
+        LINT["[2] lint: ESLint"]:::check
+        FMT["[3] format: Prettier"]:::check
+        UNIT["[4] test: Vitest"]:::check
+        TC ~~~ LINT ~~~ FMT ~~~ UNIT
     end
 
     subgraph PREVIEW [" ② Vercel & Neon: Preview Verification "]
         direction TB
         NEON["Neon: Create Test DB Branch"]:::db
         VERCEL["Vercel: Deploy Preview & Migrate DB"]:::db
-        E2E["[Check 5] Playwright E2E Test"]:::check
+        E2E["[5] e2e: Playwright"]:::check
         NEON --> VERCEL --> E2E
     end
 
     PR --> CI
     PR --> PREVIEW
 
-    %% 5つの必須チェックが直接合流
-    TC & LINT & FMT & UNIT & E2E --> GATE{"Branch Protection Rules<br>(5 Required Checks)"}:::gate
+    %% コアCI(1-4)とプレビューE2E(5)が合流してゲート判定
+    CI --> GATE{"Branch Protection Rules<br>(All 5 Checks Required [1-5])"}:::gate
+    E2E --> GATE
 
     GATE -->|All Passed| PASS["Merge to main"]:::ok
     GATE -->|Any Failed| FAIL["Blocked"]:::ng

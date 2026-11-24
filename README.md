@@ -26,7 +26,7 @@
 PR作成・pushをトリガーに、GitHub Actionsによる高速な静的検証・単体テストと、Neon・Vercelによるプレビュー環境でのE2Eテストが並列で実行されます。5つの必須チェックがすべてパスするまでmainへのマージはブロックされます。
 
 ```mermaid
-flowchart TD
+flowchart LR
     classDef test fill:#e8f0fe,stroke:#4285f4,stroke-width:1.5px;
     classDef db fill:#fef7e0,stroke:#f9ab00,stroke-width:1.5px;
     classDef gate fill:#f3e8fd,stroke:#9334ea,stroke-width:1.5px;
@@ -35,32 +35,30 @@ flowchart TD
 
     PR(["PR作成 / push"]):::test
 
-    %% 並列で走る2大パイプライン
-    subgraph CI [" ① GitHub Actions: コアCI (並列実行) "]
+    subgraph CI [" GitHub Actions: コアCI (並列実行) "]
         direction TB
-        TC["typecheck (型検査)"]:::test
-        LINT["lint (構文規則)"]:::test
-        FMT["format (コード整形)"]:::test
-        UNIT["test (単体テスト)"]:::test
+        TC["typecheck: TypeScript型検査"]:::test
+        LINT["lint: ESLint構文規則検査"]:::test
+        FMT["format: Prettierコード整形検査"]:::test
+        UNIT["test: Vitest単体・統合テスト"]:::test
     end
 
-    subgraph PREVIEW [" ② Vercel & Neon (環境検証) "]
+    subgraph PREVIEW [" Vercel & Neon: プレビュー検証 "]
         direction TB
-        NEON["Neon: テスト専用DBブランチ作成"]:::db
-        VERCEL["Vercel: プレビュー環境デプロイ <br> (自動マイグレーション適用)"]:::db
-        E2E["Playwright: E2Eテスト実行"]:::test
+        NEON["Neon: テスト用DBブランチ作成"]:::db
+        VERCEL["Vercel: プレビュー環境デプロイ (自動マイグレーション適用)"]:::db
+        E2E["Playwright: プレビュー環境E2Eテスト実行"]:::test
         NEON --> VERCEL --> E2E
     end
 
     PR --> CI
     PR --> PREVIEW
 
-    %% 合流してゲート判定
-    GATE{"GitHub ブランチ保護 <br> 5つの必須チェック判定"}:::gate
+    GATE{"GitHub ブランチ保護<br>(5つの必須チェック判定)"}:::gate
     CI --> GATE
     E2E --> GATE
 
-    GATE -->|全チェック成功| PASS(["マージ承認・完了"]):::ok
+    GATE -->|全パス| PASS(["マージ承認 & 完了"]):::ok
     GATE -->|いずれか失敗| FAIL["マージ自動ブロック"]:::ng
 ```
 

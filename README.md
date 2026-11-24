@@ -23,29 +23,59 @@
 
 ### ① PR段階の自動検証フロー
 
+PR作成・pushをトリガーに、GitHub Actionsによる高速な静的検証・単体テストと、Neon・Vercelによるプレビュー環境でのE2Eテストが並列で実行されます。5つの必須チェックがすべてパスするまでmainへのマージはブロックされます。
+
 ```mermaid
-graph LR
-    classDef test fill:#bbf,stroke:#333,stroke-width:1px;
-    classDef db fill:#ff9,stroke:#333,stroke-width:1px;
-    classDef success fill:#bfb,stroke:#333,stroke-width:1px;
+flowchart TD
+    classDef check fill:#e8f0fe,stroke:#4285f4,stroke-width:1.5px;
+    classDef db fill:#fef7e0,stroke:#f9ab00,stroke-width:1.5px;
+    classDef gate fill:#f3e8fd,stroke:#9334ea,stroke-width:1.5px;
+    classDef ok fill:#e6f4ea,stroke:#34a853,stroke-width:2px;
+    classDef ng fill:#fce8e6,stroke:#ea4335,stroke-width:1.5px;
 
-    A[PR作成] --> B[Vitest 実行 <br> ユニット・統合テスト]:::test --> C[Neon: production から <br> テスト専用DBブランチを作成]:::db --> D[Vercel: テスト用DBを接続した <br> 一時プレビュー環境を構築]:::db --> E[Playwright 実行 <br> E2Eテスト]:::test
+    PR["PR Created / Pushed"]:::check
 
-    E -->|成功| F{開発者へ通知 <br> レビュー・承認待ち}:::success
-    E -->|失敗| Fail1[PRブロック & 開発者へ通知]
+    subgraph CI [" ① GitHub Actions: Core CI "]
+        direction TB
+        TC["[1] typecheck: TypeScript"]:::check
+        LINT["[2] lint: ESLint"]:::check
+        FMT["[3] format: Prettier"]:::check
+        UNIT["[4] test: Vitest"]:::check
+        TC ~~~ LINT ~~~ FMT ~~~ UNIT
+    end
+
+    subgraph PREVIEW [" ② Vercel & Neon: Preview Verification "]
+        direction TB
+        NEON["Neon: Create Test DB Branch"]:::db
+        VERCEL["Vercel: Deploy Preview & Migrate DB"]:::db
+        E2E["[5] e2e: Playwright"]:::check
+        NEON --> VERCEL --> E2E
+    end
+
+    PR --> CI
+    PR --> PREVIEW
+
+    %% コアCI(1-4)とプレビューE2E(5)が合流してゲート判定
+    CI --> GATE{"Branch Protection Rules<br>(All 5 Checks Required [1-5])"}:::gate
+    E2E --> GATE
+
+    GATE -->|All Passed| PASS["Merge to main"]:::ok
+    GATE -->|Any Failed| FAIL["Blocked"]:::ng
 ```
 
 ### ② マージ後・本番デプロイフロー
 
+mainブランチへのマージ後は、Vercelが本番環境へ自動デプロイとマイグレーションを実行します。本番データや外部サービスの安全性を保護するため、E2Eテストはプレビュー環境で完結させ、本番環境に対してはテストを実行しません。
+
 ```mermaid
-graph LR
-    classDef test fill:#bbf,stroke:#333,stroke-width:1px;
-    classDef success fill:#bfb,stroke:#333,stroke-width:1px;
+flowchart LR
+    classDef main fill:#e8f0fe,stroke:#4285f4,stroke-width:1.5px;
+    classDef success fill:#e6f4ea,stroke:#34a853,stroke-width:2px;
+    classDef skip fill:#f1f3f4,stroke:#9aa0a6,stroke-width:1.5px,stroke-dasharray: 4 4;
 
-    G[mainマージ] --> H[Vercel: 本番環境へデプロイ] --> I[Playwright 実行 <br> 本番スモークテスト <br> ※SELECT等の安全なクエリのみ]:::test
-
-    I -->|成功| J([デプロイ完了 & 通知]):::success
-    I -->|失敗| Fail2[アラート通知 & ロールバック検討]
+    MERGE["Merge to main"]:::main --> VERCEL["Vercel: Production Deploy & DB Migration"]
+    VERCEL --> SKIP["GitHub Actions: E2E Skipped (Production Safety)"]:::skip
+    SKIP --> RELEASE["Production Released"]:::success
 ```
 
 ## 4. 技術的挑戦と問題解決

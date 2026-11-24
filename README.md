@@ -23,29 +23,61 @@
 
 ### ① PR段階の自動検証フロー
 
+PR作成・pushをトリガーに、GitHub Actionsによる高速な静的検証・単体テストと、Neon・Vercelによるプレビュー環境でのE2Eテストが並列で実行されます。5つの必須チェックがすべてパスするまでmainへのマージはブロックされます。
+
 ```mermaid
-graph LR
-    classDef test fill:#bbf,stroke:#333,stroke-width:1px;
-    classDef db fill:#ff9,stroke:#333,stroke-width:1px;
-    classDef success fill:#bfb,stroke:#333,stroke-width:1px;
+flowchart TD
+    classDef test fill:#e8f0fe,stroke:#4285f4,stroke-width:1.5px;
+    classDef db fill:#fef7e0,stroke:#f9ab00,stroke-width:1.5px;
+    classDef gate fill:#f3e8fd,stroke:#9334ea,stroke-width:1.5px;
+    classDef ok fill:#e6f4ea,stroke:#34a853,stroke-width:2px;
+    classDef ng fill:#fce8e6,stroke:#ea4335,stroke-width:1.5px;
 
-    A[PR作成] --> B[Vitest 実行 <br> ユニット・統合テスト]:::test --> C[Neon: production から <br> テスト専用DBブランチを作成]:::db --> D[Vercel: テスト用DBを接続した <br> 一時プレビュー環境を構築]:::db --> E[Playwright 実行 <br> E2Eテスト]:::test
+    PR(["PR作成 / push"]):::test
 
-    E -->|成功| F{開発者へ通知 <br> レビュー・承認待ち}:::success
-    E -->|失敗| Fail1[PRブロック & 開発者へ通知]
+    %% 並列で走る2大パイプライン
+    subgraph CI [" ① GitHub Actions: コアCI (並列実行) "]
+        direction TB
+        TC["typecheck (型検査)"]:::test
+        LINT["lint (構文規則)"]:::test
+        FMT["format (コード整形)"]:::test
+        UNIT["test (単体テスト)"]:::test
+    end
+
+    subgraph PREVIEW [" ② Vercel & Neon (環境検証) "]
+        direction TB
+        NEON["Neon: テスト専用DBブランチ作成"]:::db
+        VERCEL["Vercel: プレビュー環境デプロイ <br> (自動マイグレーション適用)"]:::db
+        E2E["Playwright: E2Eテスト実行"]:::test
+        NEON --> VERCEL --> E2E
+    end
+
+    PR --> CI
+    PR --> PREVIEW
+
+    %% 合流してゲート判定
+    GATE{"GitHub ブランチ保護 <br> 5つの必須チェック判定"}:::gate
+    CI --> GATE
+    E2E --> GATE
+
+    GATE -->|全チェック成功| PASS(["マージ承認・完了"]):::ok
+    GATE -->|いずれか失敗| FAIL["マージ自動ブロック"]:::ng
 ```
 
 ### ② マージ後・本番デプロイフロー
 
+mainブランチへのマージ後は、Vercelが本番環境へ自動デプロイとマイグレーションを実行します。本番データや外部サービスの安全性を保護するため、E2Eテストはプレビュー環境で完結させ、本番環境に対してはテストを実行しません。
+
 ```mermaid
-graph LR
-    classDef test fill:#bbf,stroke:#333,stroke-width:1px;
-    classDef success fill:#bfb,stroke:#333,stroke-width:1px;
+flowchart LR
+    classDef main fill:#e8f0fe,stroke:#4285f4,stroke-width:1.5px;
+    classDef success fill:#e6f4ea,stroke:#34a853,stroke-width:2px;
+    classDef skip fill:#f1f3f4,stroke:#9aa0a6,stroke-width:1.5px,stroke-dasharray: 4 4;
 
-    G[mainマージ] --> H[Vercel: 本番環境へデプロイ] --> I[Playwright 実行 <br> 本番スモークテスト <br> ※SELECT等の安全なクエリのみ]:::test
+    MERGE(["main マージ"]):::main --> VERCEL["Vercel: 本番環境へデプロイ <br> (本番DB自動マイグレーション)"]
+    MERGE --> SKIP["E2Eテスト: 安全のためスキップ <br> ※本番データ・外部連携の保護"]:::skip
 
-    I -->|成功| J([デプロイ完了 & 通知]):::success
-    I -->|失敗| Fail2[アラート通知 & ロールバック検討]
+    VERCEL --> RELEASE(["本番リリース完了"]):::success
 ```
 
 ## 4. 技術的挑戦と問題解決

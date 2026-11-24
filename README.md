@@ -33,22 +33,22 @@ flowchart TD
     classDef ok fill:#e6f4ea,stroke:#34a853,stroke-width:2px;
     classDef ng fill:#fce8e6,stroke:#ea4335,stroke-width:1.5px;
 
-    PR(["PR作成 / push"]):::test
+    PR["PR Created / Pushed"]:::test
 
     %% 並列で走る2大パイプライン
-    subgraph CI [" ① GitHub Actions: コアCI (並列実行) "]
+    subgraph CI [" ① GitHub Actions: Core CI (Parallel) "]
         direction TB
-        TC["typecheck (型検査)"]:::test
-        LINT["lint (構文規則)"]:::test
-        FMT["format (コード整形)"]:::test
-        UNIT["test (単体テスト)"]:::test
+        TC["typecheck: TypeScript"]:::test
+        LINT["lint: ESLint"]:::test
+        FMT["format: Prettier"]:::test
+        UNIT["test: Vitest"]:::test
     end
 
-    subgraph PREVIEW [" ② Vercel & Neon (環境検証) "]
+    subgraph PREVIEW [" ② Vercel & Neon: Preview Verification "]
         direction TB
-        NEON["Neon: テスト専用DBブランチ作成"]:::db
-        VERCEL["Vercel: プレビュー環境デプロイ <br> (自動マイグレーション適用)"]:::db
-        E2E["Playwright: E2Eテスト実行"]:::test
+        NEON["Neon: Create Test DB Branch"]:::db
+        VERCEL["Vercel: Deploy Preview & Migrate DB"]:::db
+        E2E["Playwright: Run E2E Tests"]:::test
         NEON --> VERCEL --> E2E
     end
 
@@ -56,12 +56,12 @@ flowchart TD
     PR --> PREVIEW
 
     %% 合流してゲート判定
-    GATE{"GitHub ブランチ保護 <br> 5つの必須チェック判定"}:::gate
+    GATE{"Branch Protection Rules<br>(5 Required Checks)"}:::gate
     CI --> GATE
     E2E --> GATE
 
-    GATE -->|全チェック成功| PASS(["マージ承認・完了"]):::ok
-    GATE -->|いずれか失敗| FAIL["マージ自動ブロック"]:::ng
+    GATE -->|All Passed| PASS["Merge to main"]:::ok
+    GATE -->|Any Failed| FAIL["Blocked"]:::ng
 ```
 
 ### ② マージ後・本番デプロイフロー
@@ -74,10 +74,10 @@ flowchart LR
     classDef success fill:#e6f4ea,stroke:#34a853,stroke-width:2px;
     classDef skip fill:#f1f3f4,stroke:#9aa0a6,stroke-width:1.5px,stroke-dasharray: 4 4;
 
-    MERGE(["main マージ"]):::main --> VERCEL["Vercel: 本番環境へデプロイ <br> (本番DB自動マイグレーション)"]
-    MERGE --> SKIP["E2Eテスト: 安全のためスキップ <br> ※本番データ・外部連携の保護"]:::skip
+    MERGE["Merge to main"]:::main --> VERCEL["Vercel: Production Deploy & DB Migration"]
+    MERGE --> SKIP["E2E Tests: Skipped (Production Safety)"]:::skip
 
-    VERCEL --> RELEASE(["本番リリース完了"]):::success
+    VERCEL --> RELEASE["Production Released"]:::success
 ```
 
 ## 4. 技術的挑戦と問題解決

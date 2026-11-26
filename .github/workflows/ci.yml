@@ -118,10 +118,3 @@ jobs:
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           title: '🚨 CI が失敗しました'
           failed-jobs: ${{ steps.failed-jobs.outputs.failed }}
-          actor: ${{ github.actor }}
-          repo: ${{ github.repository }}
-          branch: ${{ github.head_ref || github.ref_name }}
-          pr-number: ${{ github.event.pull_request.number }}
-          pr-title: ${{ github.event.pull_request.title }}
-          pr-url: ${{ github.event.pull_request.html_url }}
-          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

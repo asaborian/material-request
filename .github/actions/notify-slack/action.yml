@@ -1,41 +1,13 @@
 name: Notify Slack
-description: Send a failure notification to Slack via Incoming Webhook
 
 inputs:
   webhook-url:
-    description: Slack Incoming Webhook URL
     required: true
   title:
-    description: Notification title (e.g. "🚨 CI が失敗しました")
     required: true
   failed-jobs:
-    description: Comma-separated list of failed job names
     required: false
     default: ''
-  actor:
-    description: GitHub actor (user who triggered the workflow)
-    required: true
-  repo:
-    description: GitHub repository (e.g. owner/repo)
-    required: true
-  branch:
-    description: Branch name
-    required: true
-  pr-number:
-    description: Pull request number (empty if not a PR)
-    required: false
-    default: ''
-  pr-title:
-    description: Pull request title
-    required: false
-    default: ''
-  pr-url:
-    description: Pull request URL
-    required: false
-    default: ''
-  run-url:
-    description: GitHub Actions run URL
-    required: true
 
 runs:
   using: composite
@@ -46,57 +18,32 @@ runs:
         SLACK_WEBHOOK_URL: ${{ inputs.webhook-url }}
         TITLE: ${{ inputs.title }}
         FAILED_JOBS: ${{ inputs.failed-jobs }}
-        ACTOR: ${{ inputs.actor }}
-        REPO: ${{ inputs.repo }}
-        BRANCH: ${{ inputs.branch }}
-        PR_NUMBER: ${{ inputs.pr-number }}
-        PR_TITLE: ${{ inputs.pr-title }}
-        PR_URL: ${{ inputs.pr-url }}
-        RUN_URL: ${{ inputs.run-url }}
+        ACTOR: ${{ github.actor }}
+        REPO: ${{ github.repository }}
+        BRANCH: ${{ github.head_ref || github.ref_name }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        PR_TITLE: ${{ github.event.pull_request.title }}
+        PR_URL: ${{ github.event.pull_request.html_url }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: |
+        if [ -z "$SLACK_WEBHOOK_URL" ]; then
+          echo "SLACK_WEBHOOK_URL is not set; skipping notification."
+          exit 0
+        fi
+
         if [ -n "$PR_NUMBER" ]; then
-          TARGET_LINE="• *PR:* <${PR_URL}|#${PR_NUMBER} ${PR_TITLE}> (\`${BRANCH}\`)"
+          TARGET_LINE="• PR: <${PR_URL}|#${PR_NUMBER} ${PR_TITLE}> (\`${BRANCH}\`)"
         else
-          TARGET_LINE="• *ブランチ:* \`${BRANCH}\`"
+          TARGET_LINE="• ブランチ: \`${BRANCH}\`"
         fi
 
-        DETAILS="• *リポジトリ:* \`${REPO}\`\n${TARGET_LINE}\n• *実行者:* ${ACTOR}"
+        MESSAGE="*${TITLE}*"$'\n'"• リポジトリ: \`${REPO}\`"$'\n'"${TARGET_LINE}"$'\n'"• 実行者: ${ACTOR}"
         if [ -n "$FAILED_JOBS" ]; then
-          DETAILS="${DETAILS}\n• *失敗したジョブ:* \`${FAILED_JOBS}\`"
+          MESSAGE="${MESSAGE}"$'\n'"• 失敗したジョブ: \`${FAILED_JOBS}\`"
         fi
+        MESSAGE="${MESSAGE}"$'\n'"• ログ: <${RUN_URL}|GitHub Actions を開く>"
 
-        PAYLOAD=$(jq -n \
-          --arg title "$TITLE" \
-          --arg details "$DETAILS" \
-          --arg run_url "$RUN_URL" \
-          '{
-            attachments: [
-              {
-                color: "#dc2626",
-                blocks: [
-                  {
-                    type: "header",
-                    text: { type: "plain_text", text: $title, emoji: true }
-                  },
-                  {
-                    type: "section",
-                    text: { type: "mrkdwn", text: $details }
-                  },
-                  {
-                    type: "actions",
-                    elements: [
-                      {
-                        type: "button",
-                        text: { type: "plain_text", text: "GitHub Actions ログを見る", emoji: true },
-                        url: $run_url,
-                        style: "danger"
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }')
+        PAYLOAD=$(jq -n --arg text "$MESSAGE" '{ text: $text }')
 
         curl --fail --silent --show-error -X POST \
           -H 'Content-type: application/json' \

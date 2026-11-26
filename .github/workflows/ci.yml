@@ -85,3 +85,43 @@ jobs:
 
       - name: Run Vitest
         run: npm test -- --run
+
+  notify-failure:
+    needs: [typecheck, lint, format, test]
+    if: ${{ failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build failed jobs list
+        id: failed-jobs
+        env:
+          TYPECHECK_RESULT: ${{ needs.typecheck.result }}
+          LINT_RESULT: ${{ needs.lint.result }}
+          FORMAT_RESULT: ${{ needs.format.result }}
+          TEST_RESULT: ${{ needs.test.result }}
+        run: |
+          FAILED=""
+          for pair in "typecheck:$TYPECHECK_RESULT" "lint:$LINT_RESULT" "format:$FORMAT_RESULT" "test:$TEST_RESULT"; do
+            job="${pair%%:*}"
+            res="${pair#*:}"
+            if [ "$res" = "failure" ]; then
+              FAILED="${FAILED:+$FAILED, }$job"
+            fi
+          done
+          echo "failed=${FAILED}" >> "$GITHUB_OUTPUT"
+
+      - name: Notify Slack
+        uses: ./.github/actions/notify-slack
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          title: '🚨 CI が失敗しました'
+          failed-jobs: ${{ steps.failed-jobs.outputs.failed }}
+          actor: ${{ github.actor }}
+          repo: ${{ github.repository }}
+          branch: ${{ github.head_ref || github.ref_name }}
+          pr-number: ${{ github.event.pull_request.number }}
+          pr-title: ${{ github.event.pull_request.title }}
+          pr-url: ${{ github.event.pull_request.html_url }}
+          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

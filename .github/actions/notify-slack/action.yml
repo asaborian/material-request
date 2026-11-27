@@ -1,63 +1,68 @@
 name: Notify Slack
 
-# 呼び出し元から受け取る引数
+# 呼び出し元から受け取る引数（関数の引数に相当）
 inputs:
-  # Composite Action 内からは secrets.* を直接参照できないため、呼び出し元から渡す
+  # GitHub Actions の仕様上、このファイル内から secrets.* を直接参照できないため引数で受け取る
   webhook-url:
     required: true
   title:
     required: true
-  # CI 側の失敗ジョブ一覧を表示したい場合のみ指定（未指定時は空文字）
   failed-jobs:
-    required: false
-    default: ''
+    required: true
 
-# アクションの処理本体
+# アクションの処理本体（関数の処理内容に相当）
 runs:
-  # シェルコマンド等の steps を組み合わせて部品化する方式
+  # シェルコマンド等の steps を組み合わせて部品化する方式（Node.js や Docker を使わない軽量な形式）
   using: composite
-  # 順番に実行する処理のリスト
+  # 順番に実行する処理の配列（GitHub Actions の文法上、1ステップだけでも配列で書く決まり）
   steps:
     - name: Send Slack notification
       shell: bash
-      # 通知に使う値を環境変数にまとめる（コマンド内での安全な展開・インジェクション対策）
+      # 通知に使う値を環境変数にまとめる
+      # ※ run: 内に ${{ ... }} を直接書くと、PR タイトル等にコマンドが含まれていた場合に
+      #   そのまま実行されてしまう（コマンドインジェクション）ため、環境変数経由で安全に渡す
       env:
         SLACK_WEBHOOK_URL: ${{ inputs.webhook-url }}
         TITLE: ${{ inputs.title }}
         FAILED_JOBS: ${{ inputs.failed-jobs }}
         ACTOR: ${{ github.actor }}
         REPO: ${{ github.repository }}
+        # PR 実行時は PR 元ブランチ名（head_ref）、それ以外は ref_name を取得
         BRANCH: ${{ github.head_ref || github.ref_name }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
         PR_TITLE: ${{ github.event.pull_request.title }}
         PR_URL: ${{ github.event.pull_request.html_url }}
-        # 失敗した GitHub Actions 実行ログへの直リンク
+        # 失敗した GitHub Actions 実行ログ画面への URL
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      # ここから下が仮想マシン（Ubuntu）のターミナルで順番に実行されるコマンド
       run: |
-        # 1. Fork 等で Secrets 未登録のまま実行された場合はエラーにせずスキップする
+        # 1. Webhook URL が空なら通知をスキップする（Fork 等で Secrets 未登録の場合への安全装置）
+        #    -z は「文字列が空なら true」、echo は GitHub Actions のログ画面に出力、exit 0 は正常終了で抜ける命令
         if [ -z "$SLACK_WEBHOOK_URL" ]; then
           echo "SLACK_WEBHOOK_URL is not set; skipping notification."
           exit 0
         fi
 
-        # 2. 通知メッセージの2行目（TARGET_LINE）を組み立てる
-        #    PR 実行時は PR リンク、それ以外（main push や手動実行）はブランチ名を表示する
+        # 2. 通知メッセージの「対象（PR またはブランチ）」の行（TARGET_LINE）を組み立てる
+        #    -n は「文字列が空でなければ true」。PR 実行なら PR リンク、main push 等ならブランチ名にする
+        #    ※ <URL|表示文字> は Slack 独自のリンク記法
         if [ -n "$PR_NUMBER" ]; then
           TARGET_LINE="• PR: <${PR_URL}|#${PR_NUMBER} ${PR_TITLE}> (\`${BRANCH}\`)"
         else
           TARGET_LINE="• ブランチ: \`${BRANCH}\`"
         fi
 
-        MESSAGE="*${TITLE}*"$'\n'"• リポジトリ: \`${REPO}\`"$'\n'"${TARGET_LINE}"$'\n'"• 実行者: ${ACTOR}"
-        if [ -n "$FAILED_JOBS" ]; then
-          MESSAGE="${MESSAGE}"$'\n'"• 失敗したジョブ: \`${FAILED_JOBS}\`"
-        fi
-        MESSAGE="${MESSAGE}"$'\n'"• ログ: <${RUN_URL}|GitHub Actions を開く>"
+        # 各行を改行文字（$'\n'）で連結して Slack に送る本文を組み立てる
+        MESSAGE="*${TITLE}*"$'\n'"• リポジトリ: \`${REPO}\`"$'\n'"${TARGET_LINE}"$'\n'"• 実行者: ${ACTOR}"$'\n'"• 失敗したジョブ: \`${FAILED_JOBS}\`"$'\n'"• ログ: <${RUN_URL}|GitHub Actions を開く>"
 
-        # 3. PR タイトルの記号や改行で JSON が壊れないよう jq で安全に組み立てる
+        # 3. jq コマンドで {"text": "..."} 形式の JSON に変換する
+        #    PR タイトルに改行や記号（" など）が含まれていても安全にエスケープされる
         PAYLOAD=$(jq -n --arg text "$MESSAGE" '{ text: $text }')
 
-        # 4. Slack の Incoming Webhook URL へ JSON を POST 送信する
+        # 4. curl コマンドで Slack の Webhook URL へ JSON を HTTP POST 送信する
+        #    --fail: 送信先がエラーを返したらこのステップも失敗扱いにする
+        #    --silent --show-error: 通信中の進捗バーを隠しつつ、エラー時のみ内容を表示する
+        #    -X POST / -H / --data: JSON データを POST リクエストで送る指定
         curl --fail --silent --show-error -X POST \
           -H 'Content-type: application/json' \
           --data "$PAYLOAD" \

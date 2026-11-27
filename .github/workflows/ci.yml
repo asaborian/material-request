@@ -86,17 +86,19 @@ jobs:
       - name: Run Vitest
         run: npm test -- --run
 
-  # 4ジョブのいずれかが失敗したときだけ Slack に1通まとめて通知する（キャンセル時は除外）
+  # 4ジョブのいずれかが失敗したときだけ Slack に1通まとめて通知する
   notify-failure:
+    # needs: 指定した4つのジョブがすべて完了するまで待ってからこのジョブを実行する
     needs: [typecheck, lint, format, test]
+    # if: 4つのうち1つ以上が失敗（failure）し、かつキャンセルされていない（!cancelled）場合のみ実行する
     if: ${{ failure() && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
-      # ローカルアクション（./.github/actions/notify-slack）を参照するためチェックアウトが必要
+      # ローカルの部品（./.github/actions/notify-slack）を読み込むためにリポジトリを取得する
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 並列実行されたジョブのうち、失敗（failure）したものだけをカンマ区切りで抽出する
+      # 並列実行された4ジョブのうち、失敗（failure）したジョブ名だけをカンマ区切りで抽出する
       - name: Build failed jobs list
         id: failed-jobs
         env:
@@ -106,16 +108,19 @@ jobs:
           TEST_RESULT: ${{ needs.test.result }}
         run: |
           FAILED=""
+          # 「ジョブ名:結果」を1つずつ取り出し、":" で前半（ジョブ名）と後半（結果）に分割する
           for pair in "typecheck:$TYPECHECK_RESULT" "lint:$LINT_RESULT" "format:$FORMAT_RESULT" "test:$TEST_RESULT"; do
             job="${pair%%:*}"
             res="${pair#*:}"
             if [ "$res" = "failure" ]; then
+              # すでに文字列が入っていれば ", " を挟んで連結する（配列の join(", ") に相当）
               FAILED="${FAILED:+$FAILED, }$job"
             fi
           done
+          # 次のステップから ${{ steps.failed-jobs.outputs.failed }} で参照できるよう出力ファイルに書き出す
           echo "failed=${FAILED}" >> "$GITHUB_OUTPUT"
 
-      # Composite Action 内からは secrets を直接読めないため webhook-url を引数で渡す
+      # GitHub Actions の仕様上、部品内からは secrets を直接読めないため引数で渡す
       - name: Notify Slack
         uses: ./.github/actions/notify-slack
         with:

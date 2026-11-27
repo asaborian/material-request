@@ -39,10 +39,12 @@ jobs:
           path: playwright-report/
           retention-days: 30
 
-      # E2E テストが失敗したときのみ Slack へ通知する（secrets はアクション内で読めないため引数で渡す）
+      # E2E テストが失敗したときのみ（if: failure()）Slack へ通知する
+      # ※ secrets は部品内から直接読めないため引数で渡す
       - name: Notify Slack on failure
         if: failure()
         uses: ./.github/actions/notify-slack
         with:
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           title: '🚨 E2E テストが失敗しました'
+          failed-jobs: e2e

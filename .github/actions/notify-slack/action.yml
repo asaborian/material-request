@@ -2,21 +2,25 @@ name: Notify Slack
 
 # 呼び出し元から受け取る引数
 inputs:
+  # Composite Action 内からは secrets.* を直接参照できないため、呼び出し元から渡す
   webhook-url:
     required: true
   title:
     required: true
+  # CI 側の失敗ジョブ一覧を表示したい場合のみ指定（未指定時は空文字）
   failed-jobs:
     required: false
     default: ''
 
 # アクションの処理本体
 runs:
+  # シェルコマンド等の steps を組み合わせて部品化する方式
   using: composite
+  # 順番に実行する処理のリスト
   steps:
     - name: Send Slack notification
       shell: bash
-      # 通知に使う値を環境変数にまとめる
+      # 通知に使う値を環境変数にまとめる（コマンド内での安全な展開・インジェクション対策）
       env:
         SLACK_WEBHOOK_URL: ${{ inputs.webhook-url }}
         TITLE: ${{ inputs.title }}
@@ -27,15 +31,17 @@ runs:
         PR_NUMBER: ${{ github.event.pull_request.number }}
         PR_TITLE: ${{ github.event.pull_request.title }}
         PR_URL: ${{ github.event.pull_request.html_url }}
+        # 失敗した GitHub Actions 実行ログへの直リンク
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: |
-        # 1. Webhook URL が未設定なら通知をスキップ
+        # 1. Fork 等で Secrets 未登録のまま実行された場合はエラーにせずスキップする
         if [ -z "$SLACK_WEBHOOK_URL" ]; then
           echo "SLACK_WEBHOOK_URL is not set; skipping notification."
           exit 0
         fi
 
-        # 2. 通知メッセージの本文を組み立てる
+        # 2. 通知メッセージの2行目（TARGET_LINE）を組み立てる
+        #    PR 実行時は PR リンク、それ以外（main push や手動実行）はブランチ名を表示する
         if [ -n "$PR_NUMBER" ]; then
           TARGET_LINE="• PR: <${PR_URL}|#${PR_NUMBER} ${PR_TITLE}> (\`${BRANCH}\`)"
         else
@@ -48,10 +54,10 @@ runs:
         fi
         MESSAGE="${MESSAGE}"$'\n'"• ログ: <${RUN_URL}|GitHub Actions を開く>"
 
-        # 3. Slack 送信用の JSON に変換する
+        # 3. PR タイトルの記号や改行で JSON が壊れないよう jq で安全に組み立てる
         PAYLOAD=$(jq -n --arg text "$MESSAGE" '{ text: $text }')
 
-        # 4. Slack の Webhook URL に送信する
+        # 4. Slack の Incoming Webhook URL へ JSON を POST 送信する
         curl --fail --silent --show-error -X POST \
           -H 'Content-type: application/json' \
           --data "$PAYLOAD" \

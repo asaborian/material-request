@@ -86,14 +86,17 @@ jobs:
       - name: Run Vitest
         run: npm test -- --run
 
+  # 4ジョブのいずれかが失敗したときだけ Slack に1通まとめて通知する（キャンセル時は除外）
   notify-failure:
     needs: [typecheck, lint, format, test]
     if: ${{ failure() && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
+      # ローカルアクション（./.github/actions/notify-slack）を参照するためチェックアウトが必要
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 並列実行されたジョブのうち、失敗（failure）したものだけをカンマ区切りで抽出する
       - name: Build failed jobs list
         id: failed-jobs
         env:
@@ -112,6 +115,7 @@ jobs:
           done
           echo "failed=${FAILED}" >> "$GITHUB_OUTPUT"
 
+      # Composite Action 内からは secrets を直接読めないため webhook-url を引数で渡す
       - name: Notify Slack
         uses: ./.github/actions/notify-slack
         with:

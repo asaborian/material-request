@@ -85,3 +85,15 @@ jobs:
 
       - name: Run Vitest
         run: npm test -- --run
+
+  # 4ジョブのいずれかが失敗したときだけ Slack に1通まとめて通知する
+  notify-failure:
+    # needs: 指定した4つのジョブがすべて完了するまで待ってからこのジョブを実行する
+    needs: [typecheck, lint, format, test]
+    # if: 4つのうち1つ以上が失敗（failure）し、かつキャンセルされていない（!cancelled）場合のみ実行する
+    if: ${{ failure() && !cancelled() }}
+    # 共通ワークフロー（_notify-slack.yml）を呼び出す（secrets: inherit で SLACK_WEBHOOK_URL を引き継ぐ）
+    uses: ./.github/workflows/_notify-slack.yml
+    with:
+      needs-json: ${{ toJSON(needs) }}
+    secrets: inherit

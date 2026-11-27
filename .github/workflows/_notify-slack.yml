@@ -1,0 +1,74 @@
+name: Notify Slack (Reusable)
+
+# on: workflow_call は「他のワークフローから部品として呼び出される専用」の定義
+on:
+  workflow_call:
+    # 呼び出し元から受け取る引数
+    inputs:
+      # 呼び出し元の前ジョブ結果一覧（toJSON(needs) で渡される JSON 文字列）
+      needs-json:
+        required: true
+        type: string
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    # steps: には順番に行う処理を記述する。今回は1ステップしかないが、GitHub Actions の仕様上 steps: として配列で記載する
+    steps:
+      - name: Send Slack notification
+        # 通知に使う値を環境変数にまとめる
+        # ※ run: 内に ${{ ... }} を直接書くと、PR タイトル等にコマンドが含まれていた場合に
+        #   そのまま実行されてしまう（コマンドインジェクション）ため、環境変数経由で安全に渡す
+        env:
+          # 呼び出し元が secrets: inherit を指定しているため、このファイル内で直接 secrets を参照できる
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          NEEDS_JSON: ${{ inputs.needs-json }}
+          ACTOR: ${{ github.actor }}
+          REPO: ${{ github.repository }}
+          # head_ref は PR 元のブランチ名（PR 実行時のみ値が入る）。
+          # ref_name はトリガーになったブランチ名やタグ名（PR 時は仮の名前になるため head_ref を優先し、PR 以外は ref_name を使う）
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          # 失敗した GitHub Actions 実行ログ画面への URL
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        # ここから下が仮想マシン（Ubuntu）のターミナルで順番に実行されるコマンド
+        run: |
+          # 1. Webhook URL が空なら通知をスキップする（Fork 等で Secrets 未登録の場合への安全装置）
+          #    -z は「文字列が空なら true」、echo は GitHub Actions のログ画面に出力する命令。
+          #    exit 0 でこのステップを正常終了扱いで抜ける（以降の本文作成・jq・curl は一切実行されず、呼び出し元全体もエラーにしない）
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "SLACK_WEBHOOK_URL is not set; skipping notification."
+            exit 0
+          fi
+
+          # 2. 前ジョブの結果一覧（JSON）から、失敗（result == "failure"）したジョブ名だけを抽出してカンマ区切りにする
+          FAILED_JOBS=$(printf '%s' "$NEEDS_JSON" | jq -r 'to_entries | map(select(.value.result == "failure") | .key) | join(", ")')
+
+          # 3. 通知メッセージの「対象（PR またはブランチ）」の行（TARGET_LINE）を組み立てる
+          #    -n は「文字列が空でなければ true」。PR 実行なら PR リンク、main push 等ならブランチ名にする
+          #    ※ <URL|表示文字> は Slack 独自のリンク記法
+          if [ -n "$PR_NUMBER" ]; then
+            TARGET_LINE="• PR: <${PR_URL}|#${PR_NUMBER} ${PR_TITLE}> (\`${BRANCH}\`)"
+          else
+            TARGET_LINE="• ブランチ: \`${BRANCH}\`"
+          fi
+
+          # 各行を改行文字（$'\n'）で連結して Slack に送る本文を組み立てる
+          MESSAGE="*🚨 ${FAILED_JOBS} が失敗しました*"$'\n'"• リポジトリ: \`${REPO}\`"$'\n'"${TARGET_LINE}"$'\n'"• 実行者: ${ACTOR}"$'\n'"• ログ: <${RUN_URL}|GitHub Actions を開く>"
+
+          # 4. jq コマンドで {"text": "..."} 形式の JSON に変換する
+          #    PR タイトルに改行や記号（" など）が含まれていても安全にエスケープされる
+          PAYLOAD=$(jq -n --arg text "$MESSAGE" '{ text: $text }')
+
+          # 5. curl コマンドで Slack の Webhook URL へ JSON を HTTP POST 送信する
+          #    Linux のコマンドは終了時に「終了コード（0=成功、1以上=失敗）」を OS に返し、
+          #    GitHub Actions は「0 以外が返ったらそのステップを失敗にする」ルールで動いている。
+          #    --fail を付けることで、Slack 側がエラーを返したときに curl も 0 以外を返しステップが失敗扱いになる。
+          #    --silent --show-error: 通信中の進捗バーを隠しつつ、エラー時のみ内容を表示する
+          #    -X POST / -H / --data: JSON データを POST リクエストで送る指定
+          curl --fail --silent --show-error -X POST \
+            -H 'Content-type: application/json' \
+            --data "$PAYLOAD" \
+            "$SLACK_WEBHOOK_URL"

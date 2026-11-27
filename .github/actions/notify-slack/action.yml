@@ -1,5 +1,6 @@
 name: Notify Slack
 
+# 呼び出し元から受け取る引数
 inputs:
   webhook-url:
     required: true
@@ -9,11 +10,13 @@ inputs:
     required: false
     default: ''
 
+# アクションの処理本体
 runs:
   using: composite
   steps:
     - name: Send Slack notification
       shell: bash
+      # 通知に使う値を環境変数にまとめる
       env:
         SLACK_WEBHOOK_URL: ${{ inputs.webhook-url }}
         TITLE: ${{ inputs.title }}
@@ -26,11 +29,13 @@ runs:
         PR_URL: ${{ github.event.pull_request.html_url }}
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: |
+        # 1. Webhook URL が未設定なら通知をスキップ
         if [ -z "$SLACK_WEBHOOK_URL" ]; then
           echo "SLACK_WEBHOOK_URL is not set; skipping notification."
           exit 0
         fi
 
+        # 2. 通知メッセージの本文を組み立てる
         if [ -n "$PR_NUMBER" ]; then
           TARGET_LINE="• PR: <${PR_URL}|#${PR_NUMBER} ${PR_TITLE}> (\`${BRANCH}\`)"
         else
@@ -43,8 +48,10 @@ runs:
         fi
         MESSAGE="${MESSAGE}"$'\n'"• ログ: <${RUN_URL}|GitHub Actions を開く>"
 
+        # 3. Slack 送信用の JSON に変換する
         PAYLOAD=$(jq -n --arg text "$MESSAGE" '{ text: $text }')
 
+        # 4. Slack の Webhook URL に送信する
         curl --fail --silent --show-error -X POST \
           -H 'Content-type: application/json' \
           --data "$PAYLOAD" \
